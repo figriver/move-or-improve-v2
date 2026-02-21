@@ -68,6 +68,19 @@ export async function POST(req: NextRequest) {
     const engine = new DecisionEngine(config);
     const engineResults = engine.calculateScores(answers as Responses);
 
+    // Map engine results to database enums
+    const decisionMap: Record<string, 'IMPROVE' | 'MOVE' | 'UNCLEAR'> = {
+      Improve: 'IMPROVE',
+      Move: 'MOVE',
+      Unclear: 'UNCLEAR',
+    };
+    const leanMap: Record<string, 'STRONG' | 'MODERATE' | 'SLIGHT' | 'UNCLEAR'> = {
+      Strong: 'STRONG',
+      Moderate: 'MODERATE',
+      Slight: 'SLIGHT',
+      Unclear: 'UNCLEAR',
+    };
+
     // Store results
     const scoreResult = await prisma.scoreResult.create({
       data: {
@@ -75,8 +88,8 @@ export async function POST(req: NextRequest) {
         improveComposite: engineResults.improveScore,
         moveComposite: engineResults.moveScore,
         decisionIndex: engineResults.decisionIndex,
-        decision: engineResults.decision,
-        leanStrength: engineResults.lean,
+        decision: decisionMap[engineResults.decision],
+        leanStrength: leanMap[engineResults.lean],
         categoryBreakdown: engineResults.categoryScores,
         metadata: {
           totalQuestionsAnswered: engineResults.metadata.totalQuestionsAnswered,
