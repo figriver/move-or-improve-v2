@@ -1,0 +1,334 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// CORE VERSIONING & CONFIGURATION
+// ════════════════════════════════════════════════════════════════════════════════
+
+model QuestionnaireVersion {
+  id                String     @id @default(cuid())
+  version           Int        @default(1)
+  isActive          Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  createdBy         String     // Admin user ID
+  description       String?
+  
+  // Relations
+  categories        Category[]
+  questions         Question[]
+  conditionalRules  ConditionalRule[]
+  responseSessions  ResponseSession[]
+  
+  // Metadata
+  updatedAt         DateTime   @updatedAt
+  
+  @@index([isActive])
+  @@index([version])
+}
+
+model Category {
+  id                String     @id @default(cuid())
+  versionId         String
+  version           QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  name              String
+  label             String     // Display name
+  description       String?
+  defaultWeight     Decimal    @default(1.0) @db.Decimal(5, 2)
+  sortOrder         Int        @default(0)
+  isActive          Boolean    @default(true)
+  
+  // Relations
+  questions         Question[]
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@unique([versionId, name])
+  @@index([versionId])
+  @@index([sortOrder])
+}
+
+model Question {
+  id                String     @id @default(cuid())
+  versionId         String
+  version           QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  categoryId        String
+  category          Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  text              String
+  type              QuestionType // "scale" | "dropdown" | "numeric" | "yesno"
+  
+  // Scale questions
+  scaleMin          Int?       @default(1)
+  scaleMax          Int?       @default(10)
+  scaleLabels       Json?      // { "1": "label", "10": "label" }
+  
+  // Dropdown options
+  options           Json?      // [{ "value": "...", "label": "...", "scoreImpact": {...} }]
+  
+  // Settings
+  allowNA           Boolean    @default(true)
+  sortOrder         Int        @default(0)
+  isActive          Boolean    @default(true)
+  
+  // Relations
+  scoring           QuestionScoring?
+  answers           ResponseAnswer[]
+  conditionalRules  ConditionalRule[] @relation("IfQuestion")
+  conditionalTargets ConditionalRule[] @relation("TargetQuestion")
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@index([versionId])
+  @@index([categoryId])
+  @@index([sortOrder])
+}
+
+model QuestionScoring {
+  id                String     @id @default(cuid())
+  questionId        String     @unique
+  question          Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  improveWeight     Decimal    @default(1.0) @db.Decimal(5, 2)
+  moveWeight        Decimal    @default(-1.0) @db.Decimal(5, 2)
+  multiplier        Decimal    @default(1.0) @db.Decimal(5, 2)
+  reverseScored     Boolean    @default(false)
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model ConditionalRule {
+  id                String     @id @default(cuid())
+  versionId         String
+  version           QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  ifQuestionId      String
+  ifQuestion        Question   @relation("IfQuestion", fields: [ifQuestionId], references: [id], onDelete: Cascade)
+  
+  operator          ConditionOperator // "==" | "!=" | "<" | ">" | "<=" | ">=" | "contains" | "in"
+  value             String     // JSON stringified condition value
+  
+  action            ConditionalAction // "hide" | "disable" | "zero_weight" | "change_weight"
+  
+  targetQuestionId  String?
+  targetQuestion    Question?  @relation("TargetQuestion", fields: [targetQuestionId], references: [id], onDelete: SetNull)
+  
+  targetQuestionIds String[]   // For actions affecting multiple questions
+  weightOverride    Decimal?   @db.Decimal(5, 2) // For "change_weight" action
+  
+  sortOrder         Int        @default(0)
+  isActive          Boolean    @default(true)
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@index([versionId])
+  @@index([ifQuestionId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// RESPONSE & SCORING
+// ════════════════════════════════════════════════════════════════════════════════
+
+model ResponseSession {
+  id                String     @id @default(cuid())
+  versionId         String
+  version           QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  
+  createdAt         DateTime   @default(now())
+  completedAt       DateTime?
+  
+  // User metadata (JSON for flexibility)
+  userMeta          Json?      // { "name": "...", "email": "...", "age": "...", etc. }
+  
+  // Relations
+  answers           ResponseAnswer[]
+  scoreResult       ScoreResult?
+  
+  @@index([versionId])
+  @@index([createdAt])
+}
+
+model ResponseAnswer {
+  id                String     @id @default(cuid())
+  sessionId         String
+  session           ResponseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  questionId        String
+  question          Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  value             String?    // Stored as string (can be parsed as number/boolean/string)
+  isNA              Boolean    @default(false)
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@index([questionId])
+}
+
+model ScoreResult {
+  id                String     @id @default(cuid())
+  sessionId         String     @unique
+  session           ResponseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  improveComposite  Decimal    @db.Decimal(5, 4)  // -1 to 1
+  moveComposite     Decimal    @db.Decimal(5, 4)  // -1 to 1
+  decisionIndex     Decimal    @db.Decimal(5, 4)  // improveScore - moveScore
+  
+  decision          Decision   // "Improve" | "Move" | "Unclear"
+  leanStrength      LeanStrength // "Strong" | "Moderate" | "Slight" | "Unclear"
+  
+  // Category breakdown { "CategoryName": { "improve": 0.5, "move": -0.5, "weight": 1.0 } }
+  categoryBreakdown Json
+  
+  // Raw calculation metadata
+  metadata          Json?      // { "naCount": 2, "questionsAnswered": 15, "timestamp": "..." }
+  
+  createdAt         DateTime   @default(now())
+  
+  @@index([sessionId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// ADMIN & VERSIONING
+// ════════════════════════════════════════════════════════════════════════════════
+
+model Admin {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  passwordHash      String
+  name              String?
+  role              AdminRole  @default(EDITOR) // "ADMIN" | "EDITOR"
+  
+  createdAt         DateTime   @default(now())
+  lastLogin         DateTime?
+  isActive          Boolean    @default(true)
+  
+  @@index([email])
+}
+
+model VersionHistory {
+  id                String     @id @default(cuid())
+  versionNumber     Int
+  createdAt         DateTime   @default(now())
+  createdBy         String     // Admin user ID
+  
+  changeType        VersionChangeType // "question_added" | "question_edited" | "question_deleted" | "category_edited" | "weight_updated" | "threshold_updated" | "rule_added" | "rule_edited" | "version_activated"
+  description       String
+  
+  // Full config snapshot at this version
+  configSnapshot    Json
+  
+  // Which version this replaced
+  previousVersionId String?
+  
+  @@index([versionNumber])
+  @@index([createdAt])
+}
+
+model ScoringConfig {
+  id                String     @id @default(cuid())
+  versionId         String     @unique
+  
+  // Equal weighting mode
+  equalWeighting    Boolean    @default(true)
+  
+  // Neutral zone thresholds
+  neutralZoneMin    Decimal    @default(-0.75) @db.Decimal(5, 4)
+  neutralZoneMax    Decimal    @default(0.75) @db.Decimal(5, 4)
+  
+  // Lean definitions
+  strongLeanThreshold Decimal  @default(1.5) @db.Decimal(5, 4)
+  moderateLeanThreshold Decimal @default(0.75) @db.Decimal(5, 4)
+  slightLeanThreshold Decimal  @default(0.3) @db.Decimal(5, 4)
+  
+  // NA handling strategy
+  naHandling        NAHandling @default(EXCLUDE_FROM_DENOMINATOR)
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// ENUMS
+// ════════════════════════════════════════════════════════════════════════════════
+
+enum QuestionType {
+  SCALE
+  DROPDOWN
+  NUMERIC
+  YESNO
+}
+
+enum ConditionOperator {
+  EQ          // ==
+  NE          // !=
+  LT          // <
+  GT          // >
+  LTE         // <=
+  GTE         // >=
+  CONTAINS
+  IN
+}
+
+enum ConditionalAction {
+  HIDE
+  DISABLE
+  ZERO_WEIGHT
+  CHANGE_WEIGHT
+}
+
+enum Decision {
+  IMPROVE
+  MOVE
+  UNCLEAR
+}
+
+enum LeanStrength {
+  STRONG
+  MODERATE
+  SLIGHT
+  UNCLEAR
+}
+
+enum AdminRole {
+  ADMIN
+  EDITOR
+}
+
+enum VersionChangeType {
+  QUESTION_ADDED
+  QUESTION_EDITED
+  QUESTION_DELETED
+  CATEGORY_ADDED
+  CATEGORY_EDITED
+  CATEGORY_DELETED
+  WEIGHT_UPDATED
+  THRESHOLD_UPDATED
+  RULE_ADDED
+  RULE_EDITED
+  RULE_DELETED
+  RULE_ACTIVATED
+  VERSION_ACTIVATED
+  VERSION_ROLLBACK
+}
+
+enum NAHandling {
+  EXCLUDE_FROM_DENOMINATOR
+  TREAT_AS_NEUTRAL
+}
