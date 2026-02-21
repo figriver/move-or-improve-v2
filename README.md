@@ -88,3 +88,4 @@ src/
 - Section 2 questions focus on: Would the person actually want to move?
 - Scoring currently unweighted — can adjust based on importance
 - Results messaging can be more personalized based on specific answer patterns
+
