@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         decisionIndex: engineResults.decisionIndex,
         decision: decisionMap[engineResults.decision],
         leanStrength: leanMap[engineResults.lean],
-        categoryBreakdown: engineResults.categoryScores,
+        categoryBreakdown: engineResults.categoryScores as any,
         metadata: {
           totalQuestionsAnswered: engineResults.metadata.totalQuestionsAnswered,
           naCount: engineResults.metadata.naCount,
