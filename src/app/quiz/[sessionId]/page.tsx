@@ -98,7 +98,7 @@ export default function QuizPage({ params }: { params: { sessionId: string } }) 
         <h2 className="question-text">{current.text}</h2>
 
         <div className="question-input">
-          {renderQuestionInput(current, answers[current.id], (value) =>
+          {renderQuestionInput(current, answers[current.id] ?? "", (value) =>
             handleAnswer(current.id, value)
           )}
         </div>
