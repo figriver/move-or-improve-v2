@@ -58,8 +58,15 @@ export async function loadActiveConfig(): Promise<VersionSnapshot> {
     })) as any,
     questionScoring,
     conditionalRules: activeVersion.conditionalRules as any,
-    scoringConfig,
-  };
+    scoringConfig: {
+      ...scoringConfig,
+      neutralZoneMin: Number(scoringConfig.neutralZoneMin),
+      neutralZoneMax: Number(scoringConfig.neutralZoneMax),
+      strongLeanThreshold: Number(scoringConfig.strongLeanThreshold),
+      moderateLeanThreshold: Number(scoringConfig.moderateLeanThreshold),
+      slightLeanThreshold: Number(scoringConfig.slightLeanThreshold),
+    } as any,
+};
 
   return snapshot;
 }
@@ -118,8 +125,15 @@ export async function loadConfigByVersion(version: number): Promise<VersionSnaps
     })) as any,
     questionScoring,
     conditionalRules: questVersion.conditionalRules,
-    scoringConfig,
-  };
+    scoringConfig: {
+      ...scoringConfig,
+      neutralZoneMin: Number(scoringConfig.neutralZoneMin),
+      neutralZoneMax: Number(scoringConfig.neutralZoneMax),
+      strongLeanThreshold: Number(scoringConfig.strongLeanThreshold),
+      moderateLeanThreshold: Number(scoringConfig.moderateLeanThreshold),
+      slightLeanThreshold: Number(scoringConfig.slightLeanThreshold),
+    } as any,
+};
 
   return snapshot;
 }
