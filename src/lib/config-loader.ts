@@ -124,7 +124,7 @@ export async function loadConfigByVersion(version: number): Promise<VersionSnaps
       scoring: undefined,
     })) as any,
     questionScoring,
-    conditionalRules: questVersion.conditionalRules,
+    conditionalRules: questVersion.conditionalRules as any,
     scoringConfig: {
       ...scoringConfig,
       neutralZoneMin: Number(scoringConfig.neutralZoneMin),
