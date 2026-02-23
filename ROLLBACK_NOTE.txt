@@ -1,0 +1,19 @@
+EMERGENCY ROLLBACK - 2026-02-23 15:55 UTC
+
+Rolled back from: a0de534 (fix: conditionally run prisma db push in build only when DATABASE_URL is available)
+Rolled back to: b04836a (fix: normalize null category descriptions in version config loader)
+
+Reason: 4 failed deployments in 4 minutes with persistent 500 errors on /quiz endpoint.
+The commits after b04836a were all attempts to fix database/Prisma issues that were either:
+1. Introduced by the auth bypass feature (1ebbed3), or
+2. Exposed by that feature
+
+The fix attempts created a "fix loop" where each commit tried to solve problems from the previous one.
+Rolling back to the last known-good state to restore production stability.
+
+After rollback, investigate:
+- Why did the auth bypass feature (1ebbed3) break /quiz?
+- Is the database schema out of sync?
+- Are runtime Prisma connections failing?
+
+Next steps: Redeploy from this known-good commit, then carefully analyze root cause.
