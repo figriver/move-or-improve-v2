@@ -269,10 +269,12 @@ model ScoringConfig {
 // ════════════════════════════════════════════════════════════════════════════════
 
 enum QuestionType {
-  SCALE
-  DROPDOWN
-  NUMERIC
-  YESNO
+  scale
+  dropdown
+  numeric_input
+  yes_no
+  text_input
+  multiple_choice
 }
 
 enum ConditionOperator {

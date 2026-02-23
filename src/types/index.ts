@@ -2,7 +2,7 @@
 // CONFIGURATION TYPES
 // ════════════════════════════════════════════════════════════════════════════════
 
-export type QuestionType = 'scale' | 'dropdown' | 'numeric' | 'yesno';
+export type QuestionType = 'scale' | 'dropdown' | 'numeric_input' | 'yes_no' | 'text_input' | 'multiple_choice';
 
 export type ConditionOperator = '==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains' | 'in';
 

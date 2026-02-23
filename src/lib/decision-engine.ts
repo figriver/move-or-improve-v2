@@ -328,13 +328,13 @@ export class DecisionEngine {
       return normalized * 2 - 1; // Convert to [-1, 1]
     }
 
-    if (question.type === 'numeric') {
+    if (question.type === 'numeric_input') {
       const numResponse = Number(response);
       if (isNaN(numResponse)) return 0;
       return Math.min(1, Math.max(-1, numResponse / 100));
     }
 
-    if (question.type === 'yesno') {
+    if (question.type === 'yes_no') {
       return response === 'yes' ? 1 : -1;
     }
 

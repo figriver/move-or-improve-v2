@@ -202,7 +202,7 @@ function renderQuestionInput(
       );
     }
 
-    case 'yesno': {
+    case 'yes_no': {
       return (
         <div className={containerClass}>
           <div className="yesno-options">
@@ -243,7 +243,7 @@ function renderQuestionInput(
       );
     }
 
-    case 'numeric': {
+    case 'numeric_input': {
       return (
         <div className={containerClass}>
           <input
@@ -267,7 +267,72 @@ function renderQuestionInput(
       );
     }
 
+    case 'text_input': {
+      return (
+        <div className={containerClass}>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="form-input"
+            placeholder="Enter your response..."
+          />
+          {question.allowNA && (
+            <label className="na-option">
+              <input
+                type="checkbox"
+                checked={value === 'NA'}
+                onChange={(e) => onChange(e.target.checked ? 'NA' : '')}
+              />
+              <span>N/A</span>
+            </label>
+          )}
+        </div>
+      );
+    }
+
+    case 'multiple_choice': {
+      const selectedValues = value ? value.split(',') : [];
+      return (
+        <div className={containerClass}>
+          <div className="multiple-choice-options">
+            {question.options?.map((opt) => (
+              <label key={opt.value} className="multiple-choice-option">
+                <input
+                  type="checkbox"
+                  value={opt.value}
+                  checked={selectedValues.includes(opt.value)}
+                  onChange={(e) => {
+                    const newValues = selectedValues.includes(opt.value)
+                      ? selectedValues.filter(v => v !== opt.value)
+                      : [...selectedValues, opt.value];
+                    onChange(newValues.join(','));
+                  }}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+            {question.allowNA && (
+              <label className="multiple-choice-option">
+                <input
+                  type="checkbox"
+                  value="NA"
+                  checked={value === 'NA'}
+                  onChange={(e) => onChange(e.target.checked ? 'NA' : '')}
+                />
+                <span>N/A</span>
+              </label>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     default:
-      return <div>Unknown question type</div>;
+      return (
+        <div className="error-message">
+          Unknown question type: {question.type}. Please contact support.
+        </div>
+      );
   }
 }
