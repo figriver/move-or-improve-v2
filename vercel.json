@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run build",
+  "postBuildCommand": "prisma migrate deploy",
   "env": {
     "CI": "false"
   }
