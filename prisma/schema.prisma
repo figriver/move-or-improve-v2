@@ -270,9 +270,10 @@ model ScoringConfig {
 
 enum QuestionType {
   scale
-  dropdown
-  numeric_input
   yes_no
+  numeric_input
+  numeric
+  dropdown
   text_input
   multiple_choice
 }
