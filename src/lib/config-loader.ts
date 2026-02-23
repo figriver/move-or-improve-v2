@@ -57,7 +57,7 @@ export async function loadActiveConfig(): Promise<VersionSnapshot> {
       scoring: undefined, // Remove to avoid duplication
     })) as any,
     questionScoring,
-    conditionalRules: activeVersion.conditionalRules,
+    conditionalRules: activeVersion.conditionalRules as any,
     scoringConfig,
   };
 
