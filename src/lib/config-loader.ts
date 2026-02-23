@@ -118,7 +118,7 @@ export async function loadConfigByVersion(version: number): Promise<VersionSnaps
   const snapshot: VersionSnapshot = {
     version: questVersion.version,
     isActive: questVersion.isActive,
-    categories: questVersion.categories,
+    categories: questVersion.categories.map(c => ({ ...c, description: c.description ?? undefined })) as any,
     questions: questVersion.questions.map(q => ({
       ...q,
       scoring: undefined,
