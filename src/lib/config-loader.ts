@@ -51,7 +51,7 @@ export async function loadActiveConfig(): Promise<VersionSnapshot> {
   const snapshot: VersionSnapshot = {
     version: activeVersion.version,
     isActive: activeVersion.isActive,
-    categories: activeVersion.categories,
+    categories: activeVersion.categories.map(c => ({ ...c, description: c.description ?? undefined })) as any,
     questions: activeVersion.questions.map(q => ({
       ...q,
       scoring: undefined, // Remove to avoid duplication
