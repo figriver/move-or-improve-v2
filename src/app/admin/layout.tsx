@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { isAuthEnforced } from '@/lib/auth-mode';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
@@ -13,7 +14,22 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  // Check if auth should be enforced
+  const authEnforced = isAuthEnforced();
+  
+  let session = await getServerSession(authOptions);
+
+  // In non-production, create a mock session to bypass auth
+  if (!authEnforced && !session) {
+    session = {
+      user: {
+        id: 'dev-user',
+        email: 'dev@localhost',
+        name: 'Developer',
+      },
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    } as any;
+  }
 
   if (!session) {
     redirect('/admin/login');

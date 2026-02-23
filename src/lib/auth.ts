@@ -1,4 +1,5 @@
 import { NextAuthOptions } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { prisma } from './prisma';
@@ -113,4 +114,29 @@ export function isAdmin(role?: string): boolean {
  */
 export function isEditor(role?: string): boolean {
   return role === 'EDITOR' || role === 'ADMIN';
+}
+
+/**
+ * Get session with auth bypass in non-production environments
+ * 
+ * In production: returns real NextAuth session
+ * In non-production: returns mock session to bypass auth checks
+ */
+export async function getSessionWithBypass() {
+  const { isAuthEnforced } = await import('./auth-mode');
+  const session = await getServerSession(authOptions);
+
+  // In non-production, create a mock session to bypass auth
+  if (!isAuthEnforced() && !session) {
+    return {
+      user: {
+        id: 'dev-user',
+        email: 'dev@localhost',
+        name: 'Developer',
+      },
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    } as any;
+  }
+
+  return session;
 }
