@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { SessionProvider } from 'next-auth/react';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import Providers from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,9 +20,9 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SessionProvider session={session}>
+        <Providers session={session}>
           {children}
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );
