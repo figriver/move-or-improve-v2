@@ -42,6 +42,12 @@ export default function QuestionsPageClient() {
 
   return (
     <div className="admin-page">
+      <Link 
+        href="/admin"
+        style={{ display: 'inline-block', marginBottom: '16px', cursor: 'pointer', color: '#007bff', textDecoration: 'underline' }}
+      >
+        ← Back to Dashboard
+      </Link>
       <div className="page-header">
         <h1>Questions</h1>
         <Link href="/admin/questions/new" className="button button-primary">

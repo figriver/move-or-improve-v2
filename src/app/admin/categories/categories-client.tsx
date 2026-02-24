@@ -42,6 +42,12 @@ export default function CategoriesPageClient() {
 
   return (
     <div className="admin-page">
+      <Link 
+        href="/admin"
+        style={{ display: 'inline-block', marginBottom: '16px', cursor: 'pointer', color: '#007bff', textDecoration: 'underline' }}
+      >
+        ← Back to Dashboard
+      </Link>
       <div className="page-header">
         <h1>Categories</h1>
         <Link href="/admin/categories/new" className="button button-primary">
