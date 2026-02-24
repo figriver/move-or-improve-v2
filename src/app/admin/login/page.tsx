@@ -24,12 +24,21 @@ export default function AdminLogin() {
       });
 
       if (result?.error) {
-        setError(result.error);
+        // Map NextAuth error codes to user-friendly messages
+        const errorMap: { [key: string]: string } = {
+          'Invalid credentials': 'Invalid email or password',
+          'Invalid password': 'Invalid email or password',
+          'Admin not found or inactive': 'Invalid email or password',
+          'CredentialsSignin': 'Invalid email or password',
+        };
+        
+        const errorMessage = errorMap[result.error] || result.error || 'Login failed. Please try again.';
+        setError(errorMessage);
       } else if (result?.ok) {
         router.push('/admin');
       }
     } catch (err) {
-      setError('An error occurred during login');
+      setError('An error occurred during login. Please try again.');
     } finally {
       setLoading(false);
     }
