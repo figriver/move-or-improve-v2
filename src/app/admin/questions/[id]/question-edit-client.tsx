@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Question, QuestionType, DropdownOption, ScaleLabels } from '@/types';
+import { Question, QuestionType, DropdownOption, ScaleLabels, Category } from '@/types';
 
 interface QuestionEditClientProps {
   question: Question & { scoring?: any };
@@ -17,10 +17,13 @@ export default function QuestionEditClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     text: initialQuestion.text || '',
     type: initialQuestion.type as QuestionType,
+    categoryId: initialQuestion.categoryId || '',
     scaleMin: initialQuestion.scaleMin || 1,
     scaleMax: initialQuestion.scaleMax || 5,
     scaleLabels: initialQuestion.scaleLabels || {},
@@ -29,6 +32,23 @@ export default function QuestionEditClient({
     sortOrder: initialQuestion.sortOrder || 0,
     isActive: initialQuestion.isActive !== false,
   });
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get('/api/admin/categories');
+        setCategories(res.data.categories || []);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setError('Failed to load categories');
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const [optionsText, setOptionsText] = useState(
     (formData.options as DropdownOption[])
@@ -57,9 +77,16 @@ export default function QuestionEditClient({
     setSuccess(null);
 
     try {
+      if (!formData.categoryId) {
+        setError('Please select a category');
+        setLoading(false);
+        return;
+      }
+
       // Parse scale labels and options if needed
       const data: any = {
         ...formData,
+        categoryId: formData.categoryId,
       };
 
       if (formData.type === 'scale' && scaleLabelsText) {
@@ -129,7 +156,16 @@ export default function QuestionEditClient({
   return (
     <div className="admin-page">
       <div className="page-header">
-        <h1>Edit Question</h1>
+        <div>
+          <button
+            onClick={() => router.back()}
+            className="back-button"
+            style={{ marginBottom: '16px', cursor: 'pointer', color: '#007bff', background: 'none', border: 'none', fontSize: '14px', textDecoration: 'underline' }}
+          >
+            ← Back to Questions
+          </button>
+          <h1>Edit Question</h1>
+        </div>
       </div>
 
       {error && <div className="error-alert">{error}</div>}
@@ -162,6 +198,25 @@ export default function QuestionEditClient({
             <option value="dropdown">Dropdown</option>
             <option value="text_input">Text Input</option>
             <option value="multiple_choice">Multiple Choice</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="categoryId">Category *</label>
+          <select
+            id="categoryId"
+            value={formData.categoryId}
+            onChange={(e) =>
+              handleFieldChange('categoryId', e.target.value)
+            }
+            disabled={categoriesLoading}
+          >
+            <option value="">Select a category...</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
           </select>
         </div>
 

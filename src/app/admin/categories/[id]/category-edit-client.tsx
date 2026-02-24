@@ -90,7 +90,16 @@ export default function CategoryEditClient({
   return (
     <div className="admin-page">
       <div className="page-header">
-        <h1>Edit Category</h1>
+        <div>
+          <button
+            onClick={() => router.back()}
+            className="back-button"
+            style={{ marginBottom: '16px', cursor: 'pointer', color: '#007bff', background: 'none', border: 'none', fontSize: '14px', textDecoration: 'underline' }}
+          >
+            ← Back to Categories
+          </button>
+          <h1>Edit Category</h1>
+        </div>
       </div>
 
       {error && <div className="error-alert">{error}</div>}

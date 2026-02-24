@@ -57,6 +57,7 @@ export async function PUT(
     const {
       text,
       type,
+      categoryId,
       scaleMin,
       scaleMax,
       scaleLabels,
@@ -75,6 +76,7 @@ export async function PUT(
       data: {
         ...(text && { text }),
         ...(type && { type }),
+        ...(categoryId && { categoryId }),
         ...(scaleMin !== undefined && { scaleMin }),
         ...(scaleMax !== undefined && { scaleMax }),
         ...(scaleLabels && { scaleLabels }),
