@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Question, Responses } from '@/types';
 import CategorySidebar from './category-sidebar';
+import RecommendationPanel from './recommendation-panel';
 
 interface CategoryData {
   id: string;
@@ -37,8 +38,8 @@ export default function QuizPage({ params }: { params: { sessionId: string } }) 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
-  const [currentQuestionIndexInCategory, setCurrentQuestionIndexInCategory] = useState(0);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -46,12 +47,12 @@ export default function QuizPage({ params }: { params: { sessionId: string } }) 
         const res = await axios.get(`/api/quiz/${params.sessionId}`);
         const { categories } = res.data;
         setSessionData(res.data);
-        
-        // Set first category as current
+
+        // Set first category as active
         if (categories && categories.length > 0) {
-          setCurrentCategoryId(categories[0].id);
+          setActiveCategoryId(categories[0].id);
         }
-        
+
         // Initialize answers object with empty strings
         const allQuestions = categories.flatMap((c: CategoryData) => c.questions);
         setAnswers(Object.fromEntries(allQuestions.map((q: Question) => [q.id, ''])));
@@ -65,46 +66,48 @@ export default function QuizPage({ params }: { params: { sessionId: string } }) 
     fetchSession();
   }, [params.sessionId]);
 
+  // Set up intersection observer for active category tracking
+  useEffect(() => {
+    if (!sessionData) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const categoryId = entry.target.getAttribute('data-category-id');
+            if (categoryId) {
+              setActiveCategoryId(categoryId);
+            }
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    // Observe all category sections
+    sessionData.categories.forEach((category) => {
+      const element = categoryRefs.current[category.id];
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [sessionData]);
+
   const handleAnswer = (questionId: string, value: string) => {
-    setAnswers(prev => ({
+    setAnswers((prev) => ({
       ...prev,
       [questionId]: value,
     }));
   };
 
-  const handleCategorySelect = (categoryId: string) => {
-    setCurrentCategoryId(categoryId);
-    setCurrentQuestionIndexInCategory(0);
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndexInCategory > 0) {
-      setCurrentQuestionIndexInCategory(currentQuestionIndexInCategory - 1);
-    }
-  };
-
-  const handleNextQuestion = () => {
-    const currentCategory = sessionData?.categories.find(c => c.id === currentCategoryId);
-    if (currentCategory && currentQuestionIndexInCategory < currentCategory.questions.length - 1) {
-      setCurrentQuestionIndexInCategory(currentQuestionIndexInCategory + 1);
-    }
-  };
-
-  const handlePreviousCategory = () => {
-    if (!sessionData) return;
-    const currentIndex = sessionData.categories.findIndex(c => c.id === currentCategoryId);
-    if (currentIndex > 0) {
-      setCurrentCategoryId(sessionData.categories[currentIndex - 1].id);
-      setCurrentQuestionIndexInCategory(0);
-    }
-  };
-
-  const handleNextCategory = () => {
-    if (!sessionData) return;
-    const currentIndex = sessionData.categories.findIndex(c => c.id === currentCategoryId);
-    if (currentIndex < sessionData.categories.length - 1) {
-      setCurrentCategoryId(sessionData.categories[currentIndex + 1].id);
-      setCurrentQuestionIndexInCategory(0);
+  const handleScrollToCategory = (categoryId: string) => {
+    const element = categoryRefs.current[categoryId];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -124,161 +127,137 @@ export default function QuizPage({ params }: { params: { sessionId: string } }) 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div><p className="text-gray-600">Loading quiz...</p></div></div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading quiz...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error && !sessionData) {
-    return <div className="flex items-center justify-center h-screen"><div className="text-center text-red-600"><p className="text-lg font-semibold mb-2">Error</p><p>{error}</p></div></div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center text-red-600">
+          <p className="text-lg font-semibold mb-2">Error</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!sessionData) {
-    return <div className="flex items-center justify-center h-screen"><div className="text-center text-gray-600"><p className="text-lg font-semibold mb-2">No session found</p></div></div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center text-gray-600">
+          <p className="text-lg font-semibold mb-2">No session found</p>
+        </div>
+      </div>
+    );
   }
 
-  const currentCategory = sessionData.categories.find(c => c.id === currentCategoryId);
-  if (!currentCategory) {
-    return <div className="flex items-center justify-center h-screen"><div className="text-center text-gray-600"><p>Loading category...</p></div></div>;
-  }
-
-  const currentQuestion = currentCategory.questions[currentQuestionIndexInCategory];
-  const currentCategoryIndex = sessionData.categories.findIndex(c => c.id === currentCategoryId);
-  const isLastQuestion = currentQuestionIndexInCategory === currentCategory.questions.length - 1;
-  const isLastCategory = currentCategoryIndex === sessionData.categories.length - 1;
-  const progress = ((currentQuestionIndexInCategory + 1) / currentCategory.totalCount) * 100;
+  const allQuestions = sessionData.categories.flatMap((c) => c.questions);
 
   return (
-    <div className="quiz-page-container">
-      {/* Sidebar */}
-      <div className="quiz-sidebar">
+    <div className="quiz-page-container-grouped">
+      {/* Left Sidebar */}
+      <div className="quiz-sidebar-grouped">
         <CategorySidebar
           categories={sessionData.categories}
-          currentCategoryId={currentCategoryId}
-          onCategorySelect={handleCategorySelect}
-          currentRecommendation={sessionData.currentRecommendation}
-          recommendationConfidence={sessionData.recommendationConfidence}
+          activeCategoryId={activeCategoryId}
+          onCategorySelect={handleScrollToCategory}
           totalAnswered={sessionData.answeredQuestions}
           totalQuestions={sessionData.totalQuestions}
         />
       </div>
 
       {/* Main Content */}
-      <div className="quiz-main-content">
-        {/* Header */}
-        <div className="quiz-header">
-          <div className="quiz-header-max">
-            <div>
-              <h1>{currentCategory.label}</h1>
-              {currentCategory.description && (
-                <p>{currentCategory.description}</p>
-              )}
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="quiz-progress-section">
-              <div className="quiz-progress-label">
-                <span>
-                  Question {currentQuestionIndexInCategory + 1} of {currentCategory.totalCount}
-                </span>
-                <span>
-                  {currentCategory.answeredCount}/{currentCategory.totalCount} answered
-                </span>
-              </div>
-              <div className="quiz-progress-bar-container">
-                <div
-                  className="quiz-progress-bar-fill"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-            </div>
+      <div className="quiz-main-content-grouped">
+        {error && (
+          <div
+            style={{
+              marginBottom: '24px',
+              padding: '16px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              margin: '32px 32px 0',
+            }}
+          >
+            <p
+              style={{
+                color: '#991b1b',
+                fontSize: '14px',
+              }}
+            >
+              {error}
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Question Content */}
-        <div className="quiz-content-area">
-          <div className="quiz-content-wrapper">
-            {error && (
-              <div style={{
-                marginBottom: '24px',
-                padding: '16px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px'
-              }}>
-                <p style={{
-                  color: '#991b1b',
-                  fontSize: '14px'
-                }}>{error}</p>
-              </div>
-            )}
-
-            <div className="quiz-question-wrapper">
-              <h2 className="quiz-question-text">
-                {currentQuestion.text}
-              </h2>
-
-              <div className="quiz-question-input-area">
-                {renderQuestionInput(currentQuestion, answers[currentQuestion.id] ?? "", (value) =>
-                  handleAnswer(currentQuestion.id, value)
+        {/* Grouped Questions */}
+        <div className="quiz-grouped-content">
+          {sessionData.categories.map((category, categoryIndex) => (
+            <div
+              key={category.id}
+              ref={(el) => {
+                if (el) categoryRefs.current[category.id] = el;
+              }}
+              data-category-id={category.id}
+              id={`category-${category.id}`}
+              className="category-section"
+            >
+              <div className="category-section-header">
+                <h2 className="category-section-title">{category.label}</h2>
+                {category.description && (
+                  <p className="category-section-description">{category.description}</p>
                 )}
+                <div className="category-section-progress">
+                  <span>{category.answeredCount}/{category.totalCount} answered</span>
+                </div>
+              </div>
+
+              <div className="category-questions">
+                {category.questions.map((question, questionIndex) => (
+                  <div
+                    key={question.id}
+                    className="question-card"
+                  >
+                    <div className="question-number">
+                      Question {categoryIndex > 0 ? categoryIndex * 10 + questionIndex + 1 : questionIndex + 1}
+                    </div>
+                    <h3 className="question-card-text">{question.text}</h3>
+                    <div className="question-card-input">
+                      {renderQuestionInput(
+                        question,
+                        answers[question.id] ?? '',
+                        (value) => handleAnswer(question.id, value)
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          ))}
         </div>
 
-        {/* Navigation Footer */}
-        <div className="quiz-footer">
-          <div className="quiz-footer-max">
-            <div className="quiz-nav-group">
-              <button
-                onClick={handlePreviousCategory}
-                disabled={currentCategoryIndex === 0}
-                className="quiz-nav-button"
-              >
-                ← Previous Category
-              </button>
-              
-              <button
-                onClick={handlePreviousQuestion}
-                disabled={currentQuestionIndexInCategory === 0 && currentCategoryIndex === 0}
-                className="quiz-nav-button"
-              >
-                ← Previous
-              </button>
-            </div>
-
-            <div className="quiz-category-indicator">
-              {currentCategoryIndex + 1} of {sessionData.categories.length} categories
-            </div>
-
-            <div className="quiz-nav-group">
-              <button
-                onClick={handleNextQuestion}
-                disabled={isLastQuestion && isLastCategory}
-                className="quiz-nav-button primary"
-              >
-                Next →
-              </button>
-
-              <button
-                onClick={handleNextCategory}
-                disabled={isLastCategory}
-                className="quiz-nav-button primary"
-              >
-                Next Category →
-              </button>
-
-              {isLastQuestion && isLastCategory && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="quiz-nav-button success"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Assessment'}
-                </button>
-              )}
-            </div>
-          </div>
+        {/* Submit Button */}
+        <div className="quiz-submit-section">
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="quiz-submit-button"
+          >
+            {submitting ? 'Submitting...' : 'Submit Assessment'}
+          </button>
         </div>
+      </div>
+
+      {/* Right Panel - Recommendation */}
+      <div className="quiz-recommendation-grouped">
+        <RecommendationPanel questions={allQuestions} answers={answers} />
       </div>
     </div>
   );
@@ -344,9 +323,7 @@ function renderQuestionInput(
                 {opt.label}
               </option>
             ))}
-            {question.allowNA && (
-              <option value="NA">N/A</option>
-            )}
+            {question.allowNA && <option value="NA">N/A</option>}
           </select>
         </div>
       );
@@ -454,7 +431,7 @@ function renderQuestionInput(
                   checked={selectedValues.includes(opt.value)}
                   onChange={(e) => {
                     const newValues = selectedValues.includes(opt.value)
-                      ? selectedValues.filter(v => v !== opt.value)
+                      ? selectedValues.filter((v) => v !== opt.value)
                       : [...selectedValues, opt.value];
                     onChange(newValues.join(','));
                   }}
