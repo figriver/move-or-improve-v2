@@ -66,8 +66,20 @@ export async function GET(
     // Group questions by category
     const categoriesWithQuestions: CategoryWithQuestions[] = categories.map(cat => {
       const catQuestions = questions.filter(q => q.categoryId === cat.id);
+      
+      // Parse options for each question
+      const parsedQuestions = catQuestions.map(question => {
+        // Parse options if it's a string
+        if (question.options && typeof question.options === 'string') {
+          question.options = JSON.parse(question.options);
+        } else if (!question.options) {
+          question.options = null;
+        }
+        return question;
+      });
+      
       const answeredQuestions = session.answers.filter(
-        a => catQuestions.some(q => q.id === a.questionId)
+        a => parsedQuestions.some(q => q.id === a.questionId)
       );
       
       return {
@@ -76,8 +88,8 @@ export async function GET(
         label: cat.label,
         description: cat.description || '',
         sortOrder: cat.sortOrder,
-        questions: catQuestions,
-        totalCount: catQuestions.length,
+        questions: parsedQuestions,
+        totalCount: parsedQuestions.length,
         answeredCount: answeredQuestions.length,
       };
     });
